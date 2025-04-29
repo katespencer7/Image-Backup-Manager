@@ -15,6 +15,9 @@ class App_Window(QMainWindow):
  
         self.setWindowTitle("Image Backup Manager") 
         self.setStyleSheet("background-color: white;") 
+
+        # for future use:
+        self.backuptype = 1
  
         self.setGeometry(0, 0, 1000, 700)
         # self.setGeometry(0, 0, 500, 300)
@@ -55,9 +58,53 @@ class App_Window(QMainWindow):
     def open_dir_button(self):
         directory = QFileDialog.getExistingDirectory(self)  # Open dialog
         if directory:
-            print(f"Selected directory: {directory}")  # Print selected directory path
+            if self.backuptype == 1:
+              print(f"Selected directory: {directory}")  # Print selected directory path
+              self.directory_screen_pageUI(directory)
+            elif self.backuptype == 2:
+              print(f"Selected backup: {directory}")
         else:
             print(f"Error: no directory selected")  # Print selected directory path
+    
+    def directory_screen_pageUI(self, directory):
+        directory_widget = QWidget()
+        self.setCentralWidget(directory_widget)
+        
+        screen = QLabel(f"Selected directory: {directory}", self)
+        screen.setStyleSheet("color: #424242;")
+
+        dir_page = QVBoxLayout()
+        dir_page.addWidget(screen, alignment=Qt.AlignCenter)
+
+        backone_button = QPushButton('Set backup 1 directory', self)
+        backtwo_button = QPushButton('Set backup 2 directory', self)
+        cloud_button = QPushButton('Set cloud backup location', self)
+
+        all_buttons = [backone_button, backtwo_button, cloud_button]
+
+        for button in all_buttons:
+            self.backuptype = 2
+            print(self.backuptype)
+            button.setFixedSize(200, 50)
+            button.clicked.connect(self.open_dir_button)
+            button.setStyleSheet("""
+                                QPushButton {
+                                    background-color : #f1f1f1;
+                                    color: #424242;
+                                    border-radius: 10px;
+                                  }
+                                QPushButton:hover {
+                                  background-color: #E9E9E9;
+                                  }
+                                """)
+            dir_page.addWidget(button, alignment=Qt.AlignCenter)
+            # button.clicked.connect(self.open_dir_button)
+
+        # dir_page.addWidget(backone_button, alignment=Qt.AlignCenter)
+        
+
+        directory_widget.setLayout(dir_page)
+
     
     # def display_images(self, directory):
     #     for filename in os.listdir(directory):
@@ -69,70 +116,27 @@ class App_Window(QMainWindow):
     #         # end here
     
     ''' To use in the future for choosing more directories'''
-    def backup_oneUI(self):
-        backone_button = QPushButton('Set backup 1 directory', self)
-        backone_button.setFixedSize(200, 50)
-        backone_button.clicked.connect(self.open_dir_button)
-        backone_button.setStyleSheet("""
-                                QPushButton {
-                                    background-color : #f1f1f1;
-                                    color: #424242;
-                                    border-radius: 10px;
-                                  }
-                                QPushButton:hover {
-                                  background-color: #E9E9E9;
-                                  }
-                                """)
-    def open_backup_one(self):
-        directory = QFileDialog.getExistingDirectory(self)  # Open dialog
-        if directory:
-            print(f"Selected backup: {directory}")  # Print selected directory path
-        else:
-            print(f"Error: no directory selected")  # Print selected directory path
-        
-    def backup_twoUI(self):
-        backtwo_button = QPushButton('Set backup 2 directory', self)
-        backtwo_button.setFixedSize(200, 50)
-        backtwo_button.clicked.connect(self.open_dir_button)
-        backtwo_button.setStyleSheet("""
-                                QPushButton {
-                                    background-color : #f1f1f1;
-                                    color: #424242;
-                                    border-radius: 10px;
-                                  }
-                                QPushButton:hover {
-                                  background-color: #E9E9E9;
-                                  }
-                                """)
+
+    # def open_backup(self):
+    #     directory = QFileDialog.getExistingDirectory(self)  # Open dialog
+    #     if directory:
+    #         print(f"Selected backup: {directory}")  # Print selected directory path
+    #     else:
+    #         print(f"Error: no directory selected")  # Print selected directory path
     
-    def open_backup_two(self):
-        directory = QFileDialog.getExistingDirectory(self)  # Open dialog
-        if directory:
-            print(f"Selected backup: {directory}")  # Print selected directory path
-        else:
-            print(f"Error: no directory selected")  # Print selected directory path
+    # def open_backup_two(self):
+    #     directory = QFileDialog.getExistingDirectory(self)  # Open dialog
+    #     if directory:
+    #         print(f"Selected backup: {directory}")  # Print selected directory path
+    #     else:
+    #         print(f"Error: no directory selected")  # Print selected directory path
     
-    def cloud_backupUI(self):
-        cloud_button = QPushButton('Set cloud backup location', self)
-        cloud_button.setFixedSize(200, 50)
-        cloud_button.clicked.connect(self.open_dir_button)
-        cloud_button.setStyleSheet("""
-                                QPushButton {
-                                    background-color : #f1f1f1;
-                                    color: #424242;
-                                    border-radius: 10px;
-                                  }
-                                QPushButton:hover {
-                                  background-color: #E9E9E9;
-                                  }
-                                """)
-    
-    def open_cloud_backup(self):
-        directory = QFileDialog.getExistingDirectory(self)  # Open dialog
-        if directory:
-            print(f"Selected cloud location: {directory}")  # Print selected directory path
-        else:
-            print(f"Error: no directory selected")  # Print selected directory path
+    # def open_cloud_backup(self):
+    #     directory = QFileDialog.getExistingDirectory(self)  # Open dialog
+    #     if directory:
+    #         print(f"Selected cloud location: {directory}")  # Print selected directory path
+    #     else:
+    #         print(f"Error: no directory selected")  # Print selected directory path
 
 
 if __name__ == '__main__':
