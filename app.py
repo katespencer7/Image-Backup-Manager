@@ -1,5 +1,6 @@
 import sys # for command line arguments
 import os
+import glob
 # from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow, QPushButton, QVBoxLayout, QLabel, QFileDialog
 # from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import * 
@@ -14,13 +15,20 @@ class App_Window(QMainWindow):
         super().__init__()
  
         self.setWindowTitle("Image Backup Manager") 
-        self.setStyleSheet("background-color: white;") 
-
+        self.setStyleSheet("background-color: white;")
+        self.button_style = """QPushButton {
+                              background-color : #f1f1f1;
+                              color: #424242;
+                              border-radius: 10px;
+                              }
+                          QPushButton:hover {
+                              background-color: #E9E9E9;
+                              }"""
         # for future use:
         self.backuptype = 1
+        self.active_dir = None
  
         self.setGeometry(0, 0, 1000, 700)
-        # self.setGeometry(0, 0, 500, 300)
  
         self.show()
         self.front_pageUI()
@@ -38,16 +46,7 @@ class App_Window(QMainWindow):
         open_button = QPushButton('Open main directory', self)
         open_button.setFixedSize(200, 50)
         open_button.clicked.connect(self.open_dir_button)
-        open_button.setStyleSheet("""
-                                QPushButton {
-                                    background-color : #f1f1f1;
-                                    color: #424242;
-                                    border-radius: 10px;
-                                  }
-                                QPushButton:hover {
-                                  background-color: #E9E9E9;
-                                  }
-                                """)
+        open_button.setStyleSheet(self.button_style)
         # layout
         front_page = QVBoxLayout()
         front_page.addWidget(label, alignment=Qt.AlignCenter)
@@ -60,12 +59,13 @@ class App_Window(QMainWindow):
         if directory:
             if self.backuptype == 1:
               print(f"Selected directory: {directory}")  # Print selected directory path
+              self.active_dir = directory
               self.directory_screen_pageUI(directory)
             elif self.backuptype == 2:
               print(f"Selected backup: {directory}")
         else:
             print(f"Error: no directory selected")  # Print selected directory path
-    
+
     def directory_screen_pageUI(self, directory):
         directory_widget = QWidget()
         self.setCentralWidget(directory_widget)
@@ -87,23 +87,37 @@ class App_Window(QMainWindow):
             print(self.backuptype)
             button.setFixedSize(200, 50)
             button.clicked.connect(self.open_dir_button)
-            button.setStyleSheet("""
-                                QPushButton {
-                                    background-color : #f1f1f1;
-                                    color: #424242;
-                                    border-radius: 10px;
-                                  }
-                                QPushButton:hover {
-                                  background-color: #E9E9E9;
-                                  }
-                                """)
+            button.setStyleSheet(self.button_style)
             dir_page.addWidget(button, alignment=Qt.AlignCenter)
-            # button.clicked.connect(self.open_dir_button)
-
-        # dir_page.addWidget(backone_button, alignment=Qt.AlignCenter)
-        
 
         directory_widget.setLayout(dir_page)
+        
+        next_button = QPushButton('Next', self)
+        next_button.setFixedSize(200, 50)
+        next_button.setStyleSheet(self.button_style)
+        next_button.clicked.connect(self.image_display_pageUI)
+
+        dir_page.addWidget(next_button, alignment=Qt.AlignCenter)
+    
+    def image_display_pageUI(self):
+        print(f"{self.active_dir}")
+        display_widget = QWidget()
+        self.setCentralWidget(display_widget)
+
+        title = QLabel(f"Selected directory: {self.active_dir}", self)
+        title.setStyleSheet("color: #424242;")
+
+        display_page = QVBoxLayout()
+        display_page.addWidget(title, alignment=Qt.AlignCenter)
+        display_widget.setLayout(display_page)
+
+        # image display information
+        extentions = [".jpg", ".png", ".jpeg", ".JFIF"]
+        files = []
+        
+        # scroll utilization
+        scroll = QScrollArea()
+        display_page.addWidget(scroll)
 
     
     # def display_images(self, directory):
