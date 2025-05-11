@@ -112,12 +112,24 @@ class App_Window(QMainWindow):
         display_widget.setLayout(display_page)
 
         # image display information
-        extentions = [".jpg", ".png", ".jpeg", ".JFIF"]
+        extentions = ["*.jpg", "*.png", "*.jpeg", "*.JFIF"]
         files = []
-        
+
+        for extension in extentions:
+          files.extend(glob.glob(os.path.join(self.active_dir, extension))) #fixme
+          print(f'{files}')
+
         # scroll utilization
         scroll = QScrollArea()
         display_page.addWidget(scroll)
+
+        for img in files:
+            pixmap = QPixmap(img)
+            scroll.setWidget(img)
+
+        display_page.setWidget(scroll)
+
+
 
     
     # def display_images(self, directory):
