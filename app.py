@@ -28,7 +28,8 @@ class Buttons:
         directory = QFileDialog.getExistingDirectory(self.app)  # open dialog
         if directory:
             self.app.active_dir = directory
-            self.app.directory_screen_pageUI(directory)
+            # self.app.directory_screen_pageUI(directory)
+            self.app.image_display_pageUI()
         else:
             print(f"Error: no directory selected")
 
@@ -69,17 +70,23 @@ class App_Window(QMainWindow):
         self.setWindowTitle("Image Backup Manager") 
         self.setStyleSheet("background-color: white;")
         self.font_color = "color: #424242;"
-        self.setGeometry(0, 0, 1000, 650)
+        self.setMinimumSize(1000, 600)
 
-        # store directories
+        # storage
         self.active_dir = None
         self.backup_dirs = []
+        self.img_files = []
+
+        # checkboxes
+        self.checked = []
   
         self.show()
         self.front_pageUI()
 
-    # opening page
+
     def front_pageUI(self):
+        '''opening page'''
+
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
@@ -99,10 +106,11 @@ class App_Window(QMainWindow):
         front_page.addWidget(open_button, alignment=Qt.AlignCenter)
         
         central_widget.setLayout(front_page)
-    
 
-    # setting 2 & 1 directories
+
     def directory_screen_pageUI(self, directory):
+        '''set backups 2 & 1'''
+
         directory_widget = QWidget()
         self.setCentralWidget(directory_widget)
         
@@ -152,8 +160,9 @@ class App_Window(QMainWindow):
         # dir_page.addWidget(back_button, alignment=Qt.AlignCenter)
         
 
-    # image scroll through GUI
     def image_display_pageUI(self):
+        '''image scroll through GUI'''
+
         display_widget = QWidget()
         self.setCentralWidget(display_widget)
 
@@ -171,6 +180,9 @@ class App_Window(QMainWindow):
         for extension in extentions:
           files.extend(glob.glob(os.path.join(self.active_dir, extension))) #FIXME
         
+        files = sorted(files, key=os.path.getctime, reverse=True) # most recent at the top
+        self.img_files = files # store in class
+
         # # scroll utilization
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -180,23 +192,21 @@ class App_Window(QMainWindow):
         img_display = QWidget()
         grid = QGridLayout()
         grid.setSpacing(7)
-        grid.setAlignment(Qt.AlignTop)
+        grid.setAlignment(Qt.AlignTop | Qt.AlignCenter)
         img_display.setLayout(grid)
         scroll.setWidget(img_display)
         columns = 5
         pic_size = 175
 
         for index, img in enumerate(files):
-            label = QLabel()
+            widget = QWidget()
+            widget.setFixedSize(pic_size, pic_size)
+            label = QLabel(widget)
 
             image = Image.open(img)
             image = ImageOps.exif_transpose(image)  # make sure rotation works
             
-            width, height = image.size
-            side = max(width, height)
-            image = image.resize((side, side), Image.LANCZOS)
-
-            qt_image = ImageQt.ImageQt(image)      
+            qt_image = ImageQt.ImageQt(self._crop_img(image))      
             pixmap = QPixmap.fromImage(qt_image)
             pixmap = pixmap.scaled(pic_size, pic_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             
@@ -204,24 +214,33 @@ class App_Window(QMainWindow):
             label.setFixedSize(pic_size, pic_size)
             label.setAlignment(Qt.AlignCenter)
 
+            checkbox = QCheckBox(widget)
+            checkbox.move(5,5)
+            checkbox.setStyleSheet("QCheckBox::indicator { width: 18px; height: 18px; }")
+
+            self.checked.append((checkbox, img))
+            print(self.checked)
+
             row = index // columns
             column = index % columns
-            grid.addWidget(label, row, column)
-
-
-        # display_page.setWidget(scroll)
+            grid.addWidget(widget, row, column)
 
 
 
-    
-    # def display_images(self, directory):
-    #     for filename in os.listdir(directory):
-    #         #     if ".jpg" | ".png" in file_name:
-    #         # chat gpt:
-    #         filepath = os.path.join(directory, filename)
-    #         if os.path.isfile(filepath):  # You can also display folders if you want
-    #             self.central_widget.addItem(filename)
-    #         # end here
+    def _crop_img(self, image):
+        '''crop image to be square'''
+
+        width, height = image.size 
+        side = min(width, height)
+        left = (width - side) // 2
+        top = (height - side) // 2
+            
+        cropped = image.crop((left, top, left + side, top + side))
+        cropped = cropped.resize((side, side), Image.LANCZOS)
+        return cropped
+
+
+
 
 
 if __name__ == '__main__':
