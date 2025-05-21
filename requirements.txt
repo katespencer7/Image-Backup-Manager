@@ -3,3 +3,4 @@ unset __conda_setup
 # <<< conda initialize <<<
 
 PyQt5
+pillow

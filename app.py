@@ -4,7 +4,7 @@ import glob
 from PyQt5.QtWidgets import * 
 from PyQt5.QtGui import * 
 from PyQt5.QtCore import Qt  # Import Qt for alignment
-
+from PIL import Image, ImageQt, ImageOps # pillow
 
 app = QApplication(sys.argv)
 
@@ -21,7 +21,7 @@ class Buttons:
                               background-color: #E9E9E9;
                               }"""
         
-        self.backup_flag = 0
+        self.backup_flag = 0 #FIXME
     
         # button functionality
     def open_dir(self):
@@ -36,34 +36,45 @@ class Buttons:
         directory = QFileDialog.getExistingDirectory(self.app)  # open dialog
         if directory:
               self.backup_flag += 1
+              self.app.backup_dirs.append(directory)
               print(f"Selected backup: {directory}")
         else:
             print(f"Error: no backup selected")
     
     def next_button(self):
-        if self.backup_flag != 3:
-            error_txt = QLabel("Error! Please select three locations.", self.app)
+        if self.backup_flag < 3:
             print("Error!!")
+            return False
         else:
             self.app.image_display_pageUI()
+            return True
+    
+    def back_front_page(self):
+        self.app.front_pageUI()
 
+
+class DB_Settings:
+    def __init__(self, app_window):
+        self.app = app_window
 
 
 class App_Window(QMainWindow):
     def __init__(self):
         super().__init__()
+        # include other classes
         self.button = Buttons(self)
+        self.db = DB_Settings(self)
  
+        # app visual settings
         self.setWindowTitle("Image Backup Manager") 
         self.setStyleSheet("background-color: white;")
         self.font_color = "color: #424242;"
-        
-        # for future use:
-        self.backuptype = 1
+        self.setGeometry(0, 0, 1000, 650)
+
+        # store directories
         self.active_dir = None
- 
-        self.setGeometry(0, 0, 1000, 750)
- 
+        self.backup_dirs = []
+  
         self.show()
         self.front_pageUI()
 
@@ -119,9 +130,27 @@ class App_Window(QMainWindow):
         next_button.setFixedSize(200, 50)
         next_button.setStyleSheet(self.button.style)
         next_button.clicked.connect(self.button.next_button)
+        # print(all_backups)
+        # if  all_backups == True:
+        #     self.app.image_display_pageUI()
+        # else:
+        #     error = QLabel("Error! Please select three locations.", self)
+        #     dir_page.addWidget(error)
+        
+        back_button = QPushButton('Back', self)
+        back_button.setFixedSize(200, 50)
+        back_button.setStyleSheet(self.button.style)
+        back_button.clicked.connect(self.button.back_front_page)
 
-        dir_page.addWidget(next_button, alignment=Qt.AlignCenter)
-    
+        # place the buttons next to each other
+        utils = QHBoxLayout()
+        utils.addWidget(back_button)
+        utils.addWidget(next_button)
+        utils.setSpacing(5)
+        utils.setAlignment(Qt.AlignCenter)
+        dir_page.addLayout(utils)
+        # dir_page.addWidget(back_button, alignment=Qt.AlignCenter)
+        
 
     # image scroll through GUI
     def image_display_pageUI(self):
@@ -136,37 +165,48 @@ class App_Window(QMainWindow):
         display_widget.setLayout(display_page)
 
         # image display information
-        extentions = ["*.jpg", "*.png", "*.jpeg", "*.JFIF"]
+        extentions = ["*.jpg", "*.png", "*.jpeg", "*.JPG", "*.PNG", "*.JPEG"]
         files = []
 
         for extension in extentions:
-          files.extend(glob.glob(os.path.join(self.active_dir, extension))) #fixme
+          files.extend(glob.glob(os.path.join(self.active_dir, extension))) #FIXME
         
         # # scroll utilization
         scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
         display_page.addWidget(scroll)
 
         # grid for photos
         img_display = QWidget()
         grid = QGridLayout()
+        grid.setSpacing(7)
+        grid.setAlignment(Qt.AlignTop)
         img_display.setLayout(grid)
         scroll.setWidget(img_display)
-        columns = 4
+        columns = 5
         pic_size = 175
 
-        index = 0
-        for img in files:
+        for index, img in enumerate(files):
             label = QLabel()
-            pixmap = QPixmap(img)
-            pixmap = pixmap.scaled(pic_size, pic_size)
+
+            image = Image.open(img)
+            image = ImageOps.exif_transpose(image)  # make sure rotation works
+            
+            width, height = image.size
+            side = max(width, height)
+            image = image.resize((side, side), Image.LANCZOS)
+
+            qt_image = ImageQt.ImageQt(image)      
+            pixmap = QPixmap.fromImage(qt_image)
+            pixmap = pixmap.scaled(pic_size, pic_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            
             label.setPixmap(pixmap)
             label.setFixedSize(pic_size, pic_size)
+            label.setAlignment(Qt.AlignCenter)
 
             row = index // columns
             column = index % columns
             grid.addWidget(label, row, column)
-
-            index += 1
 
 
         # display_page.setWidget(scroll)
