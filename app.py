@@ -1,6 +1,9 @@
 import sys # for command line arguments
 import os
 import glob
+import json
+import hashlib
+
 from PyQt5.QtWidgets import * 
 from PyQt5.QtGui import * 
 from PyQt5.QtCore import Qt  # Import Qt for alignment
@@ -11,6 +14,7 @@ app = QApplication(sys.argv)
 class Buttons:
     def __init__(self, app_window):
         self.app = app_window
+        self.hash = JSON_Settings(app_window)
 
         self.style = """QPushButton {
                               background-color : #f1f1f1;
@@ -65,13 +69,59 @@ class Buttons:
     
     def select_all(self, bool):
         for checkbox, img in self.app.checked:
-            checkbox.setChecked(bool);
+            checkbox.setChecked(bool)
+    
+    def store_hash(self):
+        for checkbox, img in self.app.checked:
+            if checkbox.isChecked():
+                self.hash.send_to_json(img)
+    
+    def check_hash(self):
+        for checkbox, img in self.app.checked:
+            if checkbox.isChecked():
+                self.hash.check_authenticity(img)
 
 
 
-class DB_Settings:
+class JSON_Settings:
     def __init__(self, app_window):
         self.app = app_window
+
+
+    def compute_hash(self, path):
+        with open(path, "rb") as file:
+            return hashlib.sha256(file.read()).hexdigest()
+    
+
+    def send_to_json(self, path):
+        hash = self.compute_hash(path)
+        
+        new_data = {
+            "name": path,
+            "hash": hash
+        }
+
+        with open("sha256.json", "r+") as json_file:
+            existing_data = json.load(json_file)
+            
+            alr_added = any(entry["name"] == path for entry in existing_data["backups"])
+            if not alr_added: # prevent duplicates
+                existing_data["backups"].append(new_data)
+                json_file.seek(0)
+                json.dump(existing_data, json_file, indent=4)
+
+
+    def check_authenticity(self, path):
+        hash = self.compute_hash(path)
+
+        with open("sha256.json", "r") as json_file:
+            data = json.load(json_file)
+
+            hashes = [entry["hash"] for entry in data["backups"]]
+            if hash not in hashes:
+                print("uh oh")
+            else:
+                print("file is authentic")
 
 
 
@@ -80,7 +130,7 @@ class App_Window(QMainWindow):
         super().__init__()
         # include other classes
         self.button = Buttons(self)
-        self.db = DB_Settings(self)
+        self.hash = JSON_Settings(self)
  
         # app visual settings
         self.setWindowTitle("Image Backup Manager") 
@@ -235,15 +285,22 @@ class App_Window(QMainWindow):
         back_button.clicked.connect(lambda: self.button.back_to_page(lambda: self.directory_screen_pageUI(self.active_dir)))
         # display_page.addWidget(back_button)
 
-        # backup now button #FIXME does nothing
+        # backup now button
         backup_button = QPushButton('Backup Now', self)
         backup_button.setFixedSize(200, 50)
         backup_button.setStyleSheet(self.button.style)
+        backup_button.clicked.connect(lambda: self.button.store_hash())
+
+        authenticity_button = QPushButton('Verify hash', self)
+        authenticity_button.setFixedSize(200, 50)
+        authenticity_button.setStyleSheet(self.button.style)
+        authenticity_button.clicked.connect(lambda: self.button.check_hash())
 
         # place the buttons next to each other
         butils = QHBoxLayout()
         butils.addWidget(back_button)
         butils.addWidget(backup_button)
+        butils.addWidget(authenticity_button)
         butils.setSpacing(10)
         display_page.addLayout(butils)
 
