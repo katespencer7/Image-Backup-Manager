@@ -3,6 +3,7 @@ import os
 import glob
 import json
 import hashlib
+import shutil # for copy
 
 from PyQt5.QtWidgets import * 
 from PyQt5.QtGui import * 
@@ -72,10 +73,11 @@ class Buttons:
         for checkbox, img in self.app.checked:
             checkbox.setChecked(bool)
     
-    def store_hash(self, checklist):
+    def store_hash(self):
         for checkbox, img in self.app.checked:
             if checkbox.isChecked():
                 self.json_set.send_to_json(img)
+        self.app.copy_files()
     
     # def check_hash(self):
     #     for checkbox, img in self.app.checked:
@@ -121,8 +123,30 @@ class Check_Hash:
 
         self.active_dir = None
         self.incorrect_hashes = []
+
+        self.style = """
+                        QMessageBox {
+                              background-color: white;
+                              }
+                        QLabel {
+                              color: #424242;
+                              font-family: Helvetica;
+                              text-align: center;
+                              }
+                        QPushButton {
+                              background-color : #f1f1f1;
+                              color: #424242;
+                              border-radius: 10px;
+                              padding: 5px 10px
+                              }
+                        QPushButton:hover {
+                              background-color: #E9E9E9;
+                              }
+                          """
         
+
     def check_authenticity(self):
+        self.incorrect_hashes = [] # base case
         self.active_dir = QFileDialog.getExistingDirectory(self.app)  # open dialog
         
         extentions = ["*.jpg", "*.png", "*.jpeg", "*.JPG", "*.PNG", "*.JPEG"]
@@ -141,19 +165,22 @@ class Check_Hash:
                 continue
             else:
                 if val not in hashes:
-                    self.incorrect_hashes.append(img)
+                    img_file = os.path.basename(img)
+                    self.incorrect_hashes.append(img_file)
         
         self.popup() # results
         
+
     def popup(self):
         window = QMessageBox()
         window.setWindowTitle("Check Results")
         window.setStandardButtons(QMessageBox.Ok)
+        window.setStyleSheet(self.style)
         
         if self.incorrect_hashes == []:
             window.setText("Files have not been edited")
         else:
-            all_hashes = "The files that have been edited are:\n"
+            all_hashes = "The files that have been edited are:\n\n"
             for name in self.incorrect_hashes:
                 # name = self.get_path(val)
                 # print(name)
@@ -171,12 +198,10 @@ class App_Window(QMainWindow):
         self.hash = JSON_Settings(self)
         self.check_hash = Check_Hash(self, self.hash)
         self.button = Buttons(self, self.hash, self.check_hash)
-
-
-        self.stack = QStackedWidget()
-        self.setCentralWidget(self.stack)
  
         # app visual settings
+        self.stack = QStackedWidget()
+        self.setCentralWidget(self.stack)
         self.setWindowTitle("Image Backup Manager") 
         self.setStyleSheet("background-color: white;")
         self.font_color = "color: #424242;"
@@ -216,6 +241,7 @@ class App_Window(QMainWindow):
         open_button.setFixedSize(200, 50)
         open_button.clicked.connect(self.button.open_dir)
         open_button.setStyleSheet(self.button.style)
+        
         # layout
         front_page = QVBoxLayout()
         front_page.addWidget(label, alignment=Qt.AlignCenter)
@@ -258,7 +284,7 @@ class App_Window(QMainWindow):
         backup_now_button = QPushButton('Backup Now', self)
         backup_now_button.setFixedSize(200, 50)
         backup_now_button.setStyleSheet(self.button.style)
-        backup_now_button.clicked.connect(lambda: self.button.store_hash(self.checked))
+        backup_now_button.clicked.connect(self.button.store_hash)
         
         back_button = QPushButton('Back', self)
         back_button.setFixedSize(200, 50)
@@ -270,7 +296,6 @@ class App_Window(QMainWindow):
         # side_utils.addWidget(backone_button)
         # side_utils.addWidget(backtwo_button)
         # side_utils.addWidget(cloud_button)
-
 
         bottom_utils = QHBoxLayout()
         bottom_utils.addWidget(back_button)
@@ -407,6 +432,40 @@ class App_Window(QMainWindow):
         cropped = image.crop((left, top, left + side, top + side))
         cropped = cropped.resize((side, side), Image.LANCZOS)
         return cropped
+    
+    
+    def copy_files(self):
+        total_files = 0
+        backup_files = 0
+        for checkbox, img in self.checked:
+            img_file = os.path.basename(img)
+            one = os.path.join(self.backup_dir1, img_file)
+            two = os.path.join(self.backup_dir2, img_file)
+            three = os.path.join(self.backup_dir3, img_file)
+            
+            if checkbox.isChecked():
+                total_files += 1
+                
+                if not os.path.exists(one):
+                    shutil.copy2(img, one)
+                
+                if not os.path.exists(two): 
+                    shutil.copy2(img, two)
+                
+                if not os.path.exists(three): 
+                    shutil.copy2(img, three)
+                
+                if os.path.exists(one) & os.path.exists(two) & os.path.exists(three):
+                    backup_files += 1
+        
+        window = QMessageBox()
+        window.setStandardButtons(QMessageBox.Ok)
+        window.setStyleSheet(self.check_hash.style)
+        if backup_files == total_files:
+            window.setText("All files have been sucessfully backed up")
+        else:
+            window.setText("Error in backing up, try again")
+        window.exec_()
 
 
 if __name__ == '__main__':
