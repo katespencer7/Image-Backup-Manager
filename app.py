@@ -12,9 +12,10 @@ from PIL import Image, ImageQt, ImageOps # pillow
 app = QApplication(sys.argv)
 
 class Buttons:
-    def __init__(self, app_window):
+    def __init__(self, app_window, json_settings, checker):
         self.app = app_window
-        self.hash = JSON_Settings(app_window)
+        self.json_set = json_settings
+        self.hash_check = checker
 
         self.style = """QPushButton {
                               background-color : #f1f1f1;
@@ -32,8 +33,8 @@ class Buttons:
         directory = QFileDialog.getExistingDirectory(self.app)  # open dialog
         if directory:
             self.app.active_dir = directory
-            self.app.directory_screen_pageUI(directory)
-            # self.app.image_display_pageUI()
+            # self.app.directory_screen_pageUI(directory)
+            self.app.image_display_pageUI()
         else:
             print(f"Error: no directory selected")
 
@@ -71,21 +72,22 @@ class Buttons:
         for checkbox, img in self.app.checked:
             checkbox.setChecked(bool)
     
-    def store_hash(self):
+    def store_hash(self, checklist):
         for checkbox, img in self.app.checked:
             if checkbox.isChecked():
-                self.hash.send_to_json(img)
+                self.json_set.send_to_json(img)
     
-    def check_hash(self):
-        for checkbox, img in self.app.checked:
-            if checkbox.isChecked():
-                self.hash.check_authenticity(img)
+    # def check_hash(self):
+    #     for checkbox, img in self.app.checked:
+    #         if checkbox.isChecked():
+    #             self.json_set.check_authenticity(img)
 
 
 
 class JSON_Settings:
     def __init__(self, app_window):
         self.app = app_window
+        self.button = Buttons
 
 
     def compute_hash(self, path):
@@ -111,17 +113,54 @@ class JSON_Settings:
                 json.dump(existing_data, json_file, indent=4)
 
 
-    def check_authenticity(self, path):
-        hash = self.compute_hash(path)
+
+class Check_Hash:
+    def __init__(self, app_window, json_settings):
+        self.app = app_window
+        self.file = json_settings
+
+        self.active_dir = None
+        self.incorrect_hashes = []
+        
+    def check_authenticity(self):
+        self.active_dir = QFileDialog.getExistingDirectory(self.app)  # open dialog
+        
+        extentions = ["*.jpg", "*.png", "*.jpeg", "*.JPG", "*.PNG", "*.JPEG"]
+        files = []
+        for extension in extentions:
+          files.extend(glob.glob(os.path.join(self.active_dir, extension)))
 
         with open("sha256.json", "r") as json_file:
             data = json.load(json_file)
-
             hashes = [entry["hash"] for entry in data["backups"]]
-            if hash not in hashes:
-                print("uh oh")
+            names = [entry["name"] for entry in data["backups"]]
+
+        for index, img in enumerate(files):
+            val = self.file.compute_hash(img)
+            if img not in names:
+                continue
             else:
-                print("file is authentic")
+                if val not in hashes:
+                    self.incorrect_hashes.append(img)
+        
+        self.popup() # results
+        
+    def popup(self):
+        window = QMessageBox()
+        window.setWindowTitle("Check Results")
+        window.setStandardButtons(QMessageBox.Ok)
+        
+        if self.incorrect_hashes == []:
+            window.setText("Files have not been edited")
+        else:
+            all_hashes = "The files that have been edited are:\n"
+            for name in self.incorrect_hashes:
+                # name = self.get_path(val)
+                # print(name)
+                all_hashes += name + "\n"
+            window.setText(all_hashes)
+        
+        window.exec_()
 
 
 
@@ -129,8 +168,13 @@ class App_Window(QMainWindow):
     def __init__(self):
         super().__init__()
         # include other classes
-        self.button = Buttons(self)
         self.hash = JSON_Settings(self)
+        self.check_hash = Check_Hash(self, self.hash)
+        self.button = Buttons(self, self.hash, self.check_hash)
+
+
+        self.stack = QStackedWidget()
+        self.setCentralWidget(self.stack)
  
         # app visual settings
         self.setWindowTitle("Image Backup Manager") 
@@ -152,11 +196,15 @@ class App_Window(QMainWindow):
         self.front_pageUI()
 
 
+    def set_page(self, widget):
+        self.stack.addWidget(widget)
+        self.stack.setCurrentWidget(widget)
+
+
     def front_pageUI(self):
         '''opening page'''
 
         central_widget = QWidget()
-        self.setCentralWidget(central_widget)
 
         # title
         label = QLabel("Open a main directory", self)
@@ -172,16 +220,21 @@ class App_Window(QMainWindow):
         front_page = QVBoxLayout()
         front_page.addWidget(label, alignment=Qt.AlignCenter)
         front_page.addWidget(open_button, alignment=Qt.AlignCenter)
-        
+
+        authenticity_button = QPushButton('Verify hash', self)
+        authenticity_button.setFixedSize(200, 50)
+        authenticity_button.setStyleSheet(self.button.style)
+        authenticity_button.clicked.connect(self.check_hash.check_authenticity)
+        front_page.addWidget(authenticity_button, alignment=Qt.AlignCenter)
+
         central_widget.setLayout(front_page)
+        self.set_page(central_widget)
 
 
     def directory_screen_pageUI(self, directory):
         '''set backups 2 & 1'''
 
-        directory_widget = QWidget()
-        self.setCentralWidget(directory_widget)
-        
+        directory_widget = QWidget()        
         screen = QLabel(f"Selected directory: {directory}", self)
         screen.setStyleSheet(self.font_color)
 
@@ -201,32 +254,34 @@ class App_Window(QMainWindow):
         backone_button.clicked.connect(lambda: self.button.backup(1))
         backtwo_button.clicked.connect(lambda: self.button.backup(2))
         cloud_button.clicked.connect(lambda: self.button.backup(3))
-
-        directory_widget.setLayout(dir_page)
         
-        next = QPushButton('Next', self)
-        next.setFixedSize(200, 50)
-        next.setStyleSheet(self.button.style)
-        next.clicked.connect(self.button.next)
-        # print(all_backups)
-        # if  all_backups == True:
-        #     self.app.image_display_pageUI()
-        # else:
-        #     error = QLabel("Error! Please select three locations.", self)
-        #     dir_page.addWidget(error)
+        backup_now_button = QPushButton('Backup Now', self)
+        backup_now_button.setFixedSize(200, 50)
+        backup_now_button.setStyleSheet(self.button.style)
+        backup_now_button.clicked.connect(lambda: self.button.store_hash(self.checked))
         
         back_button = QPushButton('Back', self)
         back_button.setFixedSize(200, 50)
         back_button.setStyleSheet(self.button.style)
-        back_button.clicked.connect(lambda: self.button.back_to_page(self.front_pageUI))
+        back_button.clicked.connect(lambda: self.button.back_to_page(self.image_display_pageUI))
 
         # place the buttons next to each other
-        utils = QHBoxLayout()
-        utils.addWidget(back_button)
-        utils.addWidget(next)
-        utils.setSpacing(5)
-        utils.setAlignment(Qt.AlignCenter)
-        dir_page.addLayout(utils)
+        # side_utils = QHBoxLayout()
+        # side_utils.addWidget(backone_button)
+        # side_utils.addWidget(backtwo_button)
+        # side_utils.addWidget(cloud_button)
+
+
+        bottom_utils = QHBoxLayout()
+        bottom_utils.addWidget(back_button)
+        bottom_utils.addWidget(backup_now_button)
+        bottom_utils.setSpacing(10)
+        bottom_utils.setAlignment(Qt.AlignCenter)
+        dir_page.addLayout(bottom_utils)
+        
+        directory_widget.setLayout(dir_page)
+        self.set_page(directory_widget)
+
         # dir_page.addWidget(back_button, alignment=Qt.AlignCenter)
         
 
@@ -235,7 +290,7 @@ class App_Window(QMainWindow):
         self.checked = [] # base case
 
         display_widget = QWidget()
-        self.setCentralWidget(display_widget)
+        # self.setCentralWidget(display_widget)
 
         title = QLabel(f"Selected directory: {self.active_dir}", self)
         title.setStyleSheet(self.font_color)
@@ -268,7 +323,7 @@ class App_Window(QMainWindow):
         files = []
 
         for extension in extentions:
-          files.extend(glob.glob(os.path.join(self.active_dir, extension))) #FIXME
+          files.extend(glob.glob(os.path.join(self.active_dir, extension)))
         
         files = sorted(files, key=os.path.getctime, reverse=True) # most recent at the top
         self.img_files = files # store in class
@@ -282,25 +337,25 @@ class App_Window(QMainWindow):
         back_button = QPushButton('Back', self)
         back_button.setFixedSize(200, 50)
         back_button.setStyleSheet(self.button.style)
-        back_button.clicked.connect(lambda: self.button.back_to_page(lambda: self.directory_screen_pageUI(self.active_dir)))
+        back_button.clicked.connect(lambda: self.button.back_to_page(lambda: self.front_pageUI()))
         # display_page.addWidget(back_button)
 
         # backup now button
-        backup_button = QPushButton('Backup Now', self)
+        backup_button = QPushButton('Choose Backup Directories', self)
         backup_button.setFixedSize(200, 50)
         backup_button.setStyleSheet(self.button.style)
-        backup_button.clicked.connect(lambda: self.button.store_hash())
+        backup_button.clicked.connect(lambda: self.directory_screen_pageUI(self.active_dir))
 
-        authenticity_button = QPushButton('Verify hash', self)
-        authenticity_button.setFixedSize(200, 50)
-        authenticity_button.setStyleSheet(self.button.style)
-        authenticity_button.clicked.connect(lambda: self.button.check_hash())
+        # authenticity_button = QPushButton('Verify hash', self)
+        # authenticity_button.setFixedSize(200, 50)
+        # authenticity_button.setStyleSheet(self.button.style)
+        # authenticity_button.clicked.connect(lambda: self.button.check_hash())
 
         # place the buttons next to each other
         butils = QHBoxLayout()
         butils.addWidget(back_button)
         butils.addWidget(backup_button)
-        butils.addWidget(authenticity_button)
+        # butils.addWidget(authenticity_button)
         butils.setSpacing(10)
         display_page.addLayout(butils)
 
@@ -338,6 +393,7 @@ class App_Window(QMainWindow):
             row = index // columns
             column = index % columns
             grid.addWidget(widget, row, column)
+        self.set_page(display_widget)
 
 
     def _crop_img(self, image):
