@@ -1,5 +1,0 @@
-CREATE TABLE hashes (
-    id INTEGER PRIMARY KEY,
-    filename TEXT,
-    hash TEXT
-);

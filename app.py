@@ -11,6 +11,9 @@ from PyQt5.QtCore import Qt  # Import Qt for alignment
 from PIL import Image, ImageQt, ImageOps # pillow
 
 app = QApplication(sys.argv)
+font_id = QFontDatabase.addApplicationFont(os.path.abspath("assets/centurygothic.ttf"))
+font_family = QFontDatabase.applicationFontFamilies(font_id)[0]
+app.setFont(QFont(font_family))
 
 class Buttons:
     def __init__(self, app_window, json_settings, checker):
@@ -19,22 +22,25 @@ class Buttons:
         self.hash_check = checker
 
         self.style = """QPushButton {
-                              background-color : #f1f1f1;
+                              background-color : #e2e2e2;
                               color: #424242;
                               border-radius: 10px;
                               }
                           QPushButton:hover {
-                              background-color: #E9E9E9;
+                              background-color: #dadada;
                               }"""
         
-        self.backup_flag = 0 #FIXME
-    
+        self.false_style = """QPushButton {
+                              background-color : #f1f1f1;
+                              color: #424242;
+                              border-radius: 10px;
+                              }"""
+            
         # button functionality
     def open_dir(self):
         directory = QFileDialog.getExistingDirectory(self.app)  # open dialog
         if directory:
             self.app.active_dir = directory
-            # self.app.directory_screen_pageUI(directory)
             self.app.image_display_pageUI()
         else:
             print(f"Error: no directory selected")
@@ -43,28 +49,29 @@ class Buttons:
         directory = QFileDialog.getExistingDirectory(self.app)  # open dialog
         if directory:
             if flag == 1:
-                self.backup_flag += 1
                 self.app.backup_dir1 = directory
             
             elif flag == 2:
-                self.backup_flag += 1
                 self.app.backup_dir2 = directory
 
             elif flag == 3:
-                self.backup_flag += 1
                 self.app.backup_dir3 = directory
             
+        if (self.app.backup_dir1 != None) & (self.app.backup_dir2 != None) & (self.app.backup_dir3 != None):
+            self.app.backup_now_button.setStyleSheet(self.style)
+            self.app.backup_now_button.setEnabled(True) # enable
+
             print(f"Selected backup: {directory}")
         else:
             print(f"Error: no backup selected")
     
-    def next(self):
-        if self.backup_flag < 3:
-            print("Error!!")
-            return False
-        else:
-            self.app.image_display_pageUI()
-            return True
+    # def next(self):
+    #     if self.backup_flag < 3:
+    #         print("Error!!")
+    #         return False
+    #     else:
+    #         self.app.image_display_pageUI()
+    #         return True
     
     def back_to_page(self, pagefn):
         pagefn()
@@ -78,6 +85,11 @@ class Buttons:
             if checkbox.isChecked():
                 self.json_set.send_to_json(img)
         self.app.copy_files()
+
+    def backup_now(self):
+        if (self.app.backup_dir1 != None) & (self.app.backup_dir2 != None) & (self.app.backup_dir3 != None):
+            self.store_hash()
+
     
     # def check_hash(self):
     #     for checkbox, img in self.app.checked:
@@ -231,27 +243,39 @@ class App_Window(QMainWindow):
 
         central_widget = QWidget()
 
-        # title
-        label = QLabel("Open a main directory", self)
-        label.setStyleSheet(self.font_color)
-        label.setFont(QFont("Helvetica", 23))
+        # # title
+        # label = QLabel("Open a main directory", self)
+        # label.setStyleSheet(self.font_color)
+        # label.setFont(QFont("Helvetica", 23))
+        logo = QLabel()
+        pixmap = QPixmap("assets/logo.png")
+        pixmap = pixmap.scaled(662, 132, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        logo.setPixmap(pixmap)
+        logo.setAlignment(Qt.AlignCenter)
 
         # open directory button
         open_button = QPushButton('Open main directory', self)
-        open_button.setFixedSize(200, 50)
+        open_button.setFixedSize(300, 75)
         open_button.clicked.connect(self.button.open_dir)
-        open_button.setStyleSheet(self.button.style)
+        open_button.setStyleSheet(self.button.style + "QPushButton{font-size: 18px;}")
         
-        # layout
-        front_page = QVBoxLayout()
-        front_page.addWidget(label, alignment=Qt.AlignCenter)
-        front_page.addWidget(open_button, alignment=Qt.AlignCenter)
-
+        # check hash button
         authenticity_button = QPushButton('Verify hash', self)
-        authenticity_button.setFixedSize(200, 50)
+        authenticity_button.setFixedSize(300, 75)
         authenticity_button.setStyleSheet(self.button.style)
         authenticity_button.clicked.connect(self.check_hash.check_authenticity)
-        front_page.addWidget(authenticity_button, alignment=Qt.AlignCenter)
+        authenticity_button.setStyleSheet(self.button.style + "QPushButton{font-size: 18px;}")
+
+        buttons = QHBoxLayout()
+        buttons.addWidget(authenticity_button)
+        buttons.addWidget(open_button)
+        buttons.setSpacing(45)
+        buttons.setAlignment(Qt.AlignCenter)
+
+        # layout
+        front_page = QVBoxLayout()
+        front_page.addWidget(logo, alignment=Qt.AlignCenter)
+        front_page.addLayout(buttons)
 
         central_widget.setLayout(front_page)
         self.set_page(central_widget)
@@ -280,12 +304,16 @@ class App_Window(QMainWindow):
         backone_button.clicked.connect(lambda: self.button.backup(1))
         backtwo_button.clicked.connect(lambda: self.button.backup(2))
         cloud_button.clicked.connect(lambda: self.button.backup(3))
+
+        backone_file = QLabel("No File Selected")
+        one_utils = QHBoxLayout()
         
-        backup_now_button = QPushButton('Backup Now', self)
-        backup_now_button.setFixedSize(200, 50)
-        backup_now_button.setStyleSheet(self.button.style)
-        backup_now_button.clicked.connect(self.button.store_hash)
-        
+        self.backup_now_button = QPushButton('Backup Now', self)
+        self.backup_now_button.setFixedSize(200, 50)
+        self.backup_now_button.setStyleSheet(self.button.false_style)
+        self.backup_now_button.setEnabled(False) # disable
+        self.backup_now_button.clicked.connect(lambda: self.button.backup_now())
+
         back_button = QPushButton('Back', self)
         back_button.setFixedSize(200, 50)
         back_button.setStyleSheet(self.button.style)
@@ -299,8 +327,8 @@ class App_Window(QMainWindow):
 
         bottom_utils = QHBoxLayout()
         bottom_utils.addWidget(back_button)
-        bottom_utils.addWidget(backup_now_button)
-        bottom_utils.setSpacing(10)
+        bottom_utils.addWidget(self.backup_now_button)
+        bottom_utils.setSpacing(30)
         bottom_utils.setAlignment(Qt.AlignCenter)
         dir_page.addLayout(bottom_utils)
         
@@ -415,6 +443,7 @@ class App_Window(QMainWindow):
             checkbox.setStyleSheet("QCheckBox {background: transparent;}")
             self.checked.append((checkbox, img)) # add all to self for future ref
 
+            # calculate grid
             row = index // columns
             column = index % columns
             grid.addWidget(widget, row, column)
@@ -435,6 +464,8 @@ class App_Window(QMainWindow):
     
     
     def copy_files(self):
+        '''copy files to respective backups'''
+
         total_files = 0
         backup_files = 0
         for checkbox, img in self.checked:
