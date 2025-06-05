@@ -177,12 +177,11 @@ class Check_Hash:
         else:
             all_hashes = "The files that have been edited are:\n\n"
             for name in self.incorrect_hashes:
-                # name = self.get_path(val)
-                # print(name)
                 all_hashes += name + "\n"
             window.setText(all_hashes)
         
         window.exec_()
+
 
 
 class Add_Del:
@@ -209,7 +208,6 @@ class Add_Del:
                     shutil.move(img, trash) # move to trash directory
         
         self.app.image_display_pageUI()
-
 
 
 
@@ -255,9 +253,6 @@ class App_Window(QMainWindow):
         central_widget = QWidget()
 
         # # title
-        # label = QLabel("Open a main directory", self)
-        # label.setStyleSheet(self.font_color)
-        # label.setFont(QFont("Helvetica", 23))
         logo = QLabel()
         pixmap = QPixmap("assets/logo.png")
         pixmap = pixmap.scaled(662, 132, Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -330,12 +325,6 @@ class App_Window(QMainWindow):
         back_button.setStyleSheet(self.button.style)
         back_button.clicked.connect(lambda: self.button.back_to_page(self.image_display_pageUI))
 
-        # place the buttons next to each other
-        # side_utils = QHBoxLayout()
-        # side_utils.addWidget(backone_button)
-        # side_utils.addWidget(backtwo_button)
-        # side_utils.addWidget(cloud_button)
-
         bottom_utils = QHBoxLayout()
         bottom_utils.addWidget(back_button)
         bottom_utils.addWidget(self.backup_now_button)
@@ -345,8 +334,6 @@ class App_Window(QMainWindow):
         
         directory_widget.setLayout(dir_page)
         self.set_page(directory_widget)
-
-        # dir_page.addWidget(back_button, alignment=Qt.AlignCenter)
         
 
     def image_display_pageUI(self):
@@ -354,8 +341,6 @@ class App_Window(QMainWindow):
         self.checked = [] # base case
 
         display_widget = QWidget()
-        # self.setCentralWidget(display_widget)
-
         title = QLabel(f"Selected directory: {self.active_dir}", self)
         title.setStyleSheet(self.font_color)
 
