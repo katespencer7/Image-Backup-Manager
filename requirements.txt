@@ -1,2 +1,3 @@
-PyQt5
-pillow
+# Requires Python >=3.8
+PyQt5>=5.15
+pillow>=9.0
