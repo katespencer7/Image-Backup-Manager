@@ -61,17 +61,6 @@ class Buttons:
             self.app.backup_now_button.setStyleSheet(self.style)
             self.app.backup_now_button.setEnabled(True) # enable
 
-            print(f"Selected backup: {directory}")
-        else:
-            print(f"Error: no backup selected")
-    
-    # def next(self):
-    #     if self.backup_flag < 3:
-    #         print("Error!!")
-    #         return False
-    #     else:
-    #         self.app.image_display_pageUI()
-    #         return True
     
     def back_to_page(self, pagefn):
         pagefn()
@@ -89,12 +78,6 @@ class Buttons:
     def backup_now(self):
         if (self.app.backup_dir1 != None) & (self.app.backup_dir2 != None) & (self.app.backup_dir3 != None):
             self.store_hash()
-
-    
-    # def check_hash(self):
-    #     for checkbox, img in self.app.checked:
-    #         if checkbox.isChecked():
-    #             self.json_set.check_authenticity(img)
 
 
 
@@ -202,6 +185,33 @@ class Check_Hash:
         window.exec_()
 
 
+class Add_Del:
+    def __init__(self, app_window):
+        self.app = app_window
+
+    def add(self):
+        file_paths, _ = QFileDialog.getOpenFileNames(self.app,
+        "Select image files to add", "", "Image Files (*.jpg *.jpeg *.png *.JPG *.JPEG *.PNG)")
+
+        for filen in file_paths:
+            dest_path = os.path.join(self.app.active_dir, os.path.basename(filen))
+            if not os.path.exists(dest_path):
+                shutil.copy2(filen, self.app.active_dir)
+        
+        self.app.image_display_pageUI() # refresh page with new pics
+
+    def delete(self):
+        trash = os.path.join(os.getcwd(), "trash")
+
+        for checkbox, img in self.app.checked:
+            if checkbox.isChecked():
+                if os.path.exists(img): 
+                    shutil.move(img, trash) # move to trash directory
+        
+        self.app.image_display_pageUI()
+
+
+
 
 class App_Window(QMainWindow):
     def __init__(self):
@@ -210,6 +220,7 @@ class App_Window(QMainWindow):
         self.hash = JSON_Settings(self)
         self.check_hash = Check_Hash(self, self.hash)
         self.button = Buttons(self, self.hash, self.check_hash)
+        self.add_del = Add_Del(self)
  
         # app visual settings
         self.stack = QStackedWidget()
@@ -352,23 +363,7 @@ class App_Window(QMainWindow):
         display_page.addWidget(title, alignment=Qt.AlignCenter)
         display_widget.setLayout(display_page)
 
-        # buttons
-        select_all_button = QPushButton('Select all', self)
-        select_all_button.setFixedSize(100, 25)
-        select_all_button.clicked.connect(lambda: self.button.select_all(True))
-        select_all_button.setStyleSheet(self.button.style)
-
-        deselect_all_button = QPushButton('Deselect all', self)
-        deselect_all_button.setFixedSize(100, 25)
-        deselect_all_button.clicked.connect(lambda: self.button.select_all(False))
-        deselect_all_button.setStyleSheet(self.button.style)
-
-        # place the buttons next to each other
-        utils = QHBoxLayout()
-        utils.addWidget(select_all_button)
-        utils.addWidget(deselect_all_button)
-        utils.setSpacing(5)
-        utils.setAlignment(Qt.AlignRight)
+        utils = self._top_bar_buttons()
         display_page.addLayout(utils)
 
         # image display information
@@ -377,7 +372,6 @@ class App_Window(QMainWindow):
 
         for extension in extentions:
           files.extend(glob.glob(os.path.join(self.active_dir, extension)))
-        
         files = sorted(files, key=os.path.getctime, reverse=True) # most recent at the top
         self.img_files = files # store in class
 
@@ -391,18 +385,12 @@ class App_Window(QMainWindow):
         back_button.setFixedSize(200, 50)
         back_button.setStyleSheet(self.button.style)
         back_button.clicked.connect(lambda: self.button.back_to_page(lambda: self.front_pageUI()))
-        # display_page.addWidget(back_button)
 
         # backup now button
         backup_button = QPushButton('Choose Backup Directories', self)
         backup_button.setFixedSize(200, 50)
         backup_button.setStyleSheet(self.button.style)
         backup_button.clicked.connect(lambda: self.directory_screen_pageUI(self.active_dir))
-
-        # authenticity_button = QPushButton('Verify hash', self)
-        # authenticity_button.setFixedSize(200, 50)
-        # authenticity_button.setStyleSheet(self.button.style)
-        # authenticity_button.clicked.connect(lambda: self.button.check_hash())
 
         # place the buttons next to each other
         butils = QHBoxLayout()
@@ -462,7 +450,51 @@ class App_Window(QMainWindow):
         cropped = cropped.resize((side, side), Image.LANCZOS)
         return cropped
     
-    
+
+    def _top_bar_buttons(self):
+        '''buttons for image_display_pageUI, makes function shorter'''
+        # add/delete buttons
+        add_button = QPushButton('Add +', self)
+        add_button.setFixedSize(100, 25)
+        add_button.clicked.connect(self.add_del.add)
+        add_button.setStyleSheet(self.button.style)
+
+        delete_button = QPushButton('Delete -', self)
+        delete_button.setFixedSize(100, 25)
+        delete_button.clicked.connect(self.add_del.delete)
+        delete_button.setStyleSheet(self.button.style)
+
+        adutils = QHBoxLayout()
+        adutils.addWidget(add_button)
+        adutils.addWidget(delete_button)
+        adutils.setSpacing(5)
+        adutils.setAlignment(Qt.AlignLeft)
+
+        # select/deselect buttons
+        select_all_button = QPushButton('Select all', self)
+        select_all_button.setFixedSize(100, 25)
+        select_all_button.clicked.connect(lambda: self.button.select_all(True))
+        select_all_button.setStyleSheet(self.button.style)
+
+        deselect_all_button = QPushButton('Deselect all', self)
+        deselect_all_button.setFixedSize(100, 25)
+        deselect_all_button.clicked.connect(lambda: self.button.select_all(False))
+        deselect_all_button.setStyleSheet(self.button.style)
+
+        sdutils = QHBoxLayout()
+        sdutils.addWidget(select_all_button)
+        sdutils.addWidget(deselect_all_button)
+        sdutils.setSpacing(5)
+        sdutils.setAlignment(Qt.AlignRight)
+
+        # combine all buttons
+        utils = QHBoxLayout()
+        utils.addLayout(adutils)
+        utils.addStretch()  
+        utils.addLayout(sdutils)   
+        return utils
+
+
     def copy_files(self):
         '''copy files to respective backups'''
 
