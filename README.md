@@ -1,4 +1,4 @@
-### Triple-Check: An Image Backup Manager
+### TripleCheck: An Image Backup Manager
 ### Project for CS407 Spring 2025
 ![Logo](assets/logo.png)
 ---
