@@ -201,6 +201,8 @@ class Add_Del:
 
     def delete(self):
         trash = os.path.join(os.getcwd(), "trash")
+        os.makedirs(trash, exist_ok=True)
+
 
         for checkbox, img in self.app.checked:
             if checkbox.isChecked():
@@ -310,9 +312,6 @@ class App_Window(QMainWindow):
         backone_button.clicked.connect(lambda: self.button.backup(1))
         backtwo_button.clicked.connect(lambda: self.button.backup(2))
         cloud_button.clicked.connect(lambda: self.button.backup(3))
-
-        backone_file = QLabel("No File Selected")
-        one_utils = QHBoxLayout()
         
         self.backup_now_button = QPushButton('Backup Now', self)
         self.backup_now_button.setFixedSize(200, 50)
@@ -381,7 +380,6 @@ class App_Window(QMainWindow):
         butils = QHBoxLayout()
         butils.addWidget(back_button)
         butils.addWidget(backup_button)
-        # butils.addWidget(authenticity_button)
         butils.setSpacing(10)
         display_page.addLayout(butils)
 
